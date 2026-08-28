@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雅德小学五年级写作 - 评分标准统一化</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 引入 Babel 用于浏览器内编译 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @media print {
+            body { background-color: white; font-size: 14pt; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .print-container {
+                border: 2px solid #3b82f6;
+                border-radius: 16px;
+                padding: 40px;
+                margin: 20px;
+                box-shadow: none;
+            }
+        }
+        .print-only { display: none; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fefce8;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fde047;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #facc15;
+        }
+    </style>
+</head>
+<body class="bg-yellow-50 text-slate-900 font-sans min-h-screen pb-24 text-base">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Writing Rubrics based on Primary 5 Marking Scheme (40m total: Content 20m + Language 20m)
+        const writingRubrics = {
+            content: {
+                title: "内容",
+                max: 20,
+                items: [
+                    { level: 1, scores: [17, 18, 19, 20], label: "一（上）", desc: "内容充实；内容切合题旨；内容生动", feedback: "内容非常充实生动，切合题旨。" },
+                    { level: 2, scores: [13, 14, 15, 16], label: "二（中上）", desc: "内容相当充实；内容绝大部分切合题旨；内容相当生动", feedback: "内容相当充实生动，绝大部分切合题旨。" },
+                    { level: 3, scores: [9, 10, 11, 12], label: "三（中）", desc: "内容还算充实；内容还算切合题旨；内容还算生动", feedback: "内容还算充实，基本切题。" },
+                    { level: 4, scores: [5, 6, 7, 8], label: "四（中下）", desc: "内容不足；内容不大切合题旨；内容空洞", feedback: "内容略显不足，部分情节不太切合题旨。" },
+                    { level: 5, scores: [1, 2, 3, 4], label: "五（下）", desc: "内容非常不足；内容不切合题旨；内容杂乱", feedback: "内容比较偏题或杂乱，缺乏主要情节。" }
+                ]
+            },
+            language: {
+                title: "语文",
+                max: 20,
+                items: [
+                    { level: 1, scores: [17, 18, 19, 20], label: "一（上）", desc: "语句通顺，汉字及标点符号运用正确；句式多样化；词汇丰富；结构严谨，段落分明", feedback: "文笔流畅优美，词汇丰富，句式多变，结构严谨。" },
+                    { level: 2, scores: [13, 14, 15, 16], label: "二（中上）", desc: "语句绝大部分通顺，汉字及标点少许错误；句式有变化；词汇相当丰富；结构严谨，段落相当分明", feedback: "语句通顺自然，词汇相当丰富，结构分明。" },
+                    { level: 3, scores: [9, 10, 11, 12], label: "三（中）", desc: "语句还算通顺，错别字及标点错误不少；句式变化少；词汇有限；结构还算完整", feedback: "句子基本通顺，结构完整，词汇量还需加强。" },
+                    { level: 4, scores: [5, 6, 7, 8], label: "四（中下）", desc: "语句欠通顺，错别字及标点错误多；句式无变化；词汇贫乏；结构不完整", feedback: "语句不够通顺，病句和错别字较多。" },
+                    { level: 5, scores: [1, 2, 3, 4], label: "五（下）", desc: "语句完全不通顺，错别字极多；句子结构不完整；词汇非常贫乏；结构杂乱无章", feedback: "表达上遇到较大困难，句子不完整且错别字多。" }
+                ]
+            }
+        };
+
+        // Added 'Group Leader' at the top of the Examiners list
+        const examinersList = [
+            'Group Leader',
+            'CHEN JINGJING', 'CHIA AI TIAN', 'CHONG SHI YAN', 'DONG JINGJING', 
+            'FOO SIEW YEE', 'HAO XIAOXING', 'HU YULAN', 'HUANG YAO TIAN', 
+            'LIM LEE CHOON', 'LIN YUSHI', 'PENG YUANZHEN', 'POH YEU PEI', 
+            'SU WAN JU', 'TAN HUI JUAI', 'TEY SIEW LENG', 'YEO WEE KIANG', 
+            'ZHENG LIDAN'
+        ];
+
+        // 8 Scripts for Standardisation exercise
+        const scriptsList = Array.from({ length: 8 }, (_, i) => `Script #${i + 1}`);
+
+        const getBandLevel = (category, score) => {
+            const items = writingRubrics[category].items;
+            for (let item of items) {
+                if (item.scores.includes(score)) return item;
+            }
+            return items[items.length - 1];
+        };
+
+        const App = () => {
+            // Default both dropdowns to empty string so user sees "选择" placeholder
+            const [selectedScript, setSelectedScript] = useState('');
+            const [currentExaminer, setCurrentExaminer] = useState('');
+            const [scores, setScores] = useState({ content: 0, language: 0 });
+            const [selections, setSelections] = useState({ content: null, language: null });
+            
+            // Standardisation Records Store: { [scriptId]: { [examinerName]: { content, language, total } } }
+            const [scriptRecords, setScriptRecords] = useState({});
+
+            const [feedbackText, setFeedbackText] = useState('');
+            const gasUrl = 'https://script.google.com/macros/s/AKfycbzfb0UHPo6OThoe4pufXbaXgxcyW240YmMHKF9xk6DBiIbXJ41_lNrxCfv067iXRWyPMg/exec';
+            const [submitStatus, setSubmitStatus] = useState('idle');
+            const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'alert', onConfirm: null, isSuccess: false });
+
+            const maxContent = writingRubrics.content.max;
+            const maxLanguage = writingRubrics.language.max;
+            const maxTotal = maxContent + maxLanguage;
+
+            const contentTotal = Number(scores.content);
+            const languageTotal = Number(scores.language);
+            const grandTotal = contentTotal + languageTotal;
+
+            // Retrieve Group Leader's score benchmark for current script
+            const currentLeaderRecord = useMemo(() => {
+                if (!selectedScript) return null;
+                return scriptRecords[selectedScript]?.['Group Leader'] || null;
+            }, [selectedScript, scriptRecords]);
+
+            // Real-time comparison logic with Group Leader
+            const comparisonAnalysis = useMemo(() => {
+                if (!selectedScript || !currentExaminer || !currentLeaderRecord || currentExaminer === 'Group Leader') {
+                    return null;
+                }
+
+                const myContentBand = getBandLevel('content', contentTotal);
+                const leaderContentBand = getBandLevel('content', currentLeaderRecord.content);
+                const contentBandSame = myContentBand.level === leaderContentBand.level;
+                const contentDiff = contentTotal - currentLeaderRecord.content;
+
+                const myLangBand = getBandLevel('language', languageTotal);
+                const leaderLangBand = getBandLevel('language', currentLeaderRecord.language);
+                const langBandSame = myLangBand.level === leaderLangBand.level;
+                const langDiff = languageTotal - currentLeaderRecord.language;
+
+                return {
+                    hasLeader: true,
+                    leaderScore: currentLeaderRecord,
+                    contentBandSame,
+                    contentDiff,
+                    myContentBand,
+                    leaderContentBand,
+                    langBandSame,
+                    langDiff,
+                    myLangBand,
+                    leaderLangBand
+                };
+            }, [selectedScript, currentExaminer, currentLeaderRecord, contentTotal, languageTotal]);
+
+            // Auto-generate AI Comparison Feedback text
+            const generatedFeedback = useMemo(() => {
+                if (!selectedScript || !currentExaminer) {
+                    return "请选择【试卷编号】和【评卷老师】以开始评分。";
+                }
+
+                let parts = [];
+
+                if (currentExaminer === 'Group Leader') {
+                    parts.push(`【组长标杆设定 - ${selectedScript}】\n内容得分：${contentTotal}分 (${getBandLevel('content', contentTotal).label})\n语文得分：${languageTotal}分 (${getBandLevel('language', languageTotal).label})\n此成绩将作为全组评卷老师的统考标杆基准。`);
+                } else if (comparisonAnalysis && comparisonAnalysis.hasLeader) {
+                    const c = comparisonAnalysis;
+                    parts.push(`【与组长评分标准对比分析 - ${selectedScript}】`);
+
+                    // Content Comparison
+                    let cText = `内容 (${contentTotal}分 vs 组长 ${c.leaderScore.content}分)：`;
+                    if (c.contentBandSame) {
+                        cText += `与组长属于【同一等阶 - ${c.myContentBand.label}】。分差为 ${c.contentDiff > 0 ? '+' : ''}${c.contentDiff}分，标准掌握一致！`;
+                    } else {
+                        cText += `与组长处于【不同等阶 - 您的评估: ${c.myContentBand.label} vs 组长: ${c.leaderContentBand.label}】。分差为 ${c.contentDiff > 0 ? '+' : ''}${c.contentDiff}分，请注意调整内容宽严尺度。`;
+                    }
+                    parts.push(cText);
+
+                    // Language Comparison
+                    let lText = `语文 (${languageTotal}分 vs 组长 ${c.leaderScore.language}分)：`;
+                    if (c.langBandSame) {
+                        lText += `与组长属于【同一等阶 - ${c.myLangBand.label}】。分差为 ${c.langDiff > 0 ? '+' : ''}${c.langDiff}分，标准掌握一致！`;
+                    } else {
+                        lText += `与组长处于【不同等阶 - 您的评估: ${c.myLangBand.label} vs 组长: ${c.leaderLangBand.label}】。分差为 ${c.langDiff > 0 ? '+' : ''}${c.langDiff}分，请注意把握语文词汇句式等阶要求。`;
+                    }
+                    parts.push(lText);
+
+                    const totalDiff = grandTotal - c.leaderScore.total;
+                    parts.push(`总体总分差：${totalDiff > 0 ? '+' : ''}${totalDiff}分 (总分: ${grandTotal}分 vs 组长: ${c.leaderScore.total}分)。`);
+                } else {
+                    parts.push(`【综合评估评语】\n【内容】\n${getBandLevel('content', contentTotal).feedback}\n\n【语文】\n${getBandLevel('language', languageTotal).feedback}`);
+                    if (currentExaminer !== 'Group Leader') {
+                        parts.push(`\n注：组长尚未提交 ${selectedScript} 的标杆分数，暂无对比分析。`);
+                    }
+                }
+
+                return parts.join("\n\n");
+            }, [currentExaminer, selectedScript, contentTotal, languageTotal, grandTotal, comparisonAnalysis]);
+
+            useEffect(() => {
+                setFeedbackText(generatedFeedback);
+            }, [generatedFeedback]);
+
+            const handleSelect = (category, itemIndex, selectedScore) => {
+                setSelections(prev => ({ ...prev, [category]: itemIndex }));
+                setScores(prev => ({ ...prev, [category]: selectedScore }));
+            };
+
+            const handleScoreChange = (category, value) => {
+                let num = parseInt(value) || 0;
+                if (num > writingRubrics[category].max) num = writingRubrics[category].max;
+                setScores(prev => ({ ...prev, [category]: num }));
+                setSelections(prev => ({ ...prev, [category]: null })); 
+            };
+
+            const handleExaminerChange = (e) => {
+                const val = e.target.value;
+                setCurrentExaminer(val);
+                
+                if (selectedScript && scriptRecords[selectedScript]?.[val]) {
+                    const rec = scriptRecords[selectedScript][val];
+                    setScores({ content: rec.content, language: rec.language });
+                }
+            };
+
+            const handleScriptChange = (e) => {
+                const newScript = e.target.value;
+                setSelectedScript(newScript);
+
+                if (currentExaminer && scriptRecords[newScript]?.[currentExaminer]) {
+                    const rec = scriptRecords[newScript][currentExaminer];
+                    setScores({ content: rec.content, language: rec.language });
+                } else {
+                    setScores({ content: 0, language: 0 });
+                    setSelections({ content: null, language: null });
+                }
+            };
+
+            const handlePrint = () => {
+                if (!selectedScript || !currentExaminer) {
+                    setDialog({ isOpen: true, title: '提示', message: '请先选择试卷编号和评卷老师。', type: 'alert' });
+                    return;
+                }
+                const originalTitle = document.title;
+                document.title = `华文写作评分统一化_${selectedScript}_${currentExaminer}`;
+                window.print();
+                setTimeout(() => { document.title = originalTitle; }, 500);
+            };
+
+            const handleSubmitGAS = async () => {
+                if (!gasUrl.startsWith('https://script.google.com/macros/s/')) {
+                    setDialog({ isOpen: true, title: '尚未连接 Google Sheet', message: '请先把 HTML 里的 gasUrl 换成 P5 Google Apps Script 部署后的 Web App URL。', type: 'alert' });
+                    return;
+                }
+
+                if (!selectedScript || !currentExaminer) {
+                    setDialog({ isOpen: true, title: '提示', message: '请确保已选择【试卷编号】和【评卷老师】。', type: 'alert' });
+                    return;
+                }
+
+                setSubmitStatus('loading');
+                
+                // Save locally
+                const updatedRecords = {
+                    ...scriptRecords,
+                    [selectedScript]: {
+                        ...(scriptRecords[selectedScript] || {}),
+                        [currentExaminer]: {
+                            content: contentTotal,
+                            language: languageTotal,
+                            total: grandTotal
+                        }
+                    }
+                };
+                setScriptRecords(updatedRecords);
+
+                const isGroupLeader = currentExaminer === 'Group Leader';
+
+                const payload = {
+                    scriptId: selectedScript,
+                    examiner: currentExaminer,
+                    isGroupLeader: isGroupLeader,
+                    contentScore: contentTotal,
+                    languageScore: languageTotal,
+                    totalScore: grandTotal,
+                    leaderContentScore: currentLeaderRecord?.content ?? 'N/A',
+                    leaderLanguageScore: currentLeaderRecord?.language ?? 'N/A',
+                    leaderTotalScore: currentLeaderRecord?.total ?? 'N/A',
+                    contentBandSame: comparisonAnalysis ? comparisonAnalysis.contentBandSame : 'N/A',
+                    langBandSame: comparisonAnalysis ? comparisonAnalysis.langBandSame : 'N/A',
+                    feedback: feedbackText,
+                    timestamp: new Date().toLocaleString('zh-CN', { hour12: false })
+                };
+
+                try {
+                    await fetch(gasUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    setSubmitStatus('idle');
+                    
+                    let msg = `${selectedScript} 的评分结果已同步至云端。`;
+                    if (isGroupLeader) {
+                        msg += `\n已设定为【Group Leader 标杆分数】，将在 Google Sheet 中置顶作为全组对比参考。`;
+                    } else if (currentLeaderRecord) {
+                        msg += `\n与组长标杆对比：内容${comparisonAnalysis.contentBandSame ? '【同等】' : '【跨等】'}，语文${comparisonAnalysis.langBandSame ? '【同等】' : '【跨等】'}`;
+                    }
+
+                    setDialog({ 
+                        isOpen: true, 
+                        title: '✅ 提交成功！', 
+                        message: msg, 
+                        type: 'alert',
+                        isSuccess: true 
+                    });
+                } catch (error) {
+                    setSubmitStatus('idle');
+                    setDialog({ isOpen: true, title: '提交失败', message: '网络错误，请重试。', type: 'alert' });
+                }
+            };
+
+            const resetForm = () => {
+                setDialog({
+                    isOpen: true,
+                    title: '确认清空',
+                    message: '确定要重置当前分数选项吗？',
+                    type: 'confirm',
+                    onConfirm: () => {
+                        setScores({ content: 0, language: 0 });
+                        setSelections({ content: null, language: null });
+                        setFeedbackText('');
+                    }
+                });
+            };
+
+            const renderRubricRow = (categoryKey, rubricObj) => (
+                <div className="mb-10 bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 no-print">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h3 className="font-bold text-xl md:text-2xl text-slate-800">
+                            {rubricObj.title} <span className="text-slate-400 text-lg font-medium">({rubricObj.max}分)</span>
+                        </h3>
+                        <div className="flex items-center space-x-3 bg-blue-50 px-4 py-2 rounded-xl border border-blue-200 w-full md:w-auto justify-between md:justify-start">
+                            <span className="text-base md:text-lg text-blue-900 font-bold">得分:</span>
+                            <div className="flex items-baseline">
+                                <input 
+                                    type="number" 
+                                    min="0" max={rubricObj.max}
+                                    value={scores[categoryKey]} 
+                                    onChange={(e) => handleScoreChange(categoryKey, e.target.value)}
+                                    className="w-16 text-center font-black text-2xl text-blue-700 bg-transparent border-b-2 border-blue-300 focus:outline-none focus:border-blue-700 transition-colors"
+                                />
+                                <span className="text-slate-500 font-medium ml-1">/{rubricObj.max}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {rubricObj.items.map((item, index) => {
+                            const isSelected = selections[categoryKey] === index;
+                            return (
+                                <div 
+                                    key={index}
+                                    onClick={() => handleSelect(categoryKey, index, item.scores[item.scores.length - 1])}
+                                    className={`cursor-pointer rounded-xl p-4 transition-all duration-200 border-2 flex flex-col ${
+                                        isSelected 
+                                        ? 'border-blue-600 bg-blue-50 shadow-md ring-4 ring-blue-100 scale-[1.02]' 
+                                        : 'border-slate-200 hover:border-blue-400 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {item.scores.map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelect(categoryKey, index, s);
+                                                }}
+                                                className={`w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center text-sm md:text-base font-black transition-all ${
+                                                    isSelected && scores[categoryKey] === s 
+                                                    ? 'bg-blue-600 text-white shadow-lg scale-110' 
+                                                    : 'bg-white border-2 border-slate-300 text-slate-600 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-400'
+                                                }`}
+                                            >
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className={`font-bold text-lg mb-2 ${isSelected ? 'text-blue-800' : 'text-slate-700'}`}>
+                                        {item.label}
+                                    </div>
+                                    <div className={`text-sm leading-relaxed flex-grow ${isSelected ? 'text-blue-900/80 font-medium' : 'text-slate-500'}`}>
+                                        {item.desc}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+                    
+                    {/* Modal Dialog */}
+                    {dialog.isOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 no-print">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+                                <div className={`p-10 ${dialog.isSuccess ? 'bg-green-50 text-center' : ''}`}>
+                                    {dialog.isSuccess && <div className="text-7xl mb-6">🎯</div>}
+                                    <h3 className={`font-black text-3xl mb-4 ${dialog.isSuccess ? 'text-green-800' : 'text-slate-900'}`}>
+                                        {dialog.title || '提示'}
+                                    </h3>
+                                    <p className={`leading-relaxed text-xl whitespace-pre-line ${dialog.isSuccess ? 'text-green-900 font-medium' : 'text-slate-600'}`}>
+                                        {dialog.message}
+                                    </p>
+                                </div>
+                                <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-center space-x-4">
+                                    {dialog.type === 'confirm' && (
+                                        <button 
+                                            onClick={() => setDialog({ ...dialog, isOpen: false })} 
+                                            className="px-8 py-4 text-slate-600 font-bold text-lg hover:bg-slate-200 rounded-xl transition-colors w-full"
+                                        >
+                                            取消
+                                        </button>
+                                    )}
+                                    <button 
+                                        onClick={() => { 
+                                            if(dialog.onConfirm) dialog.onConfirm(); 
+                                            setDialog({ ...dialog, isOpen: false, isSuccess: false }); 
+                                        }} 
+                                        className={`px-8 py-4 text-white font-black text-lg rounded-xl shadow-lg transition-colors w-full ${dialog.isSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                    >
+                                        我知道了
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Header & Controls */}
+                    <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl shadow-md border-b border-slate-200 rounded-b-3xl p-4 lg:p-6 mb-8 flex flex-col xl:flex-row justify-between items-start xl:items-center no-print gap-4">
+                        
+                        <div className="flex flex-col space-y-4 w-full xl:w-auto">
+                            <h1 className="text-2xl md:text-3xl font-black bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent drop-shadow-sm">
+                                雅德小学五年级写作 - 评分标准统一化
+                            </h1>
+
+                            <div className="flex flex-wrap items-center gap-4">
+                                {/* 试卷编号 Selection Dropdown */}
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-bold text-slate-600 uppercase">试卷编号:</span>
+                                    <select 
+                                        value={selectedScript} 
+                                        onChange={handleScriptChange}
+                                        className="border-2 border-blue-200 rounded-xl px-4 py-2 bg-blue-50 focus:ring-4 focus:ring-blue-500/20 outline-none font-black text-blue-900 cursor-pointer shadow-sm text-lg"
+                                    >
+                                        <option value="">-- 选择 --</option>
+                                        {scriptsList.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+
+                                {/* Examiner Dropdown with Group Leader */}
+                                <div className="flex items-center space-x-2 md:border-l-2 md:border-slate-200 md:pl-4">
+                                    <span className="text-sm font-bold text-purple-700 uppercase">评卷老师:</span>
+                                    <select 
+                                        value={currentExaminer}
+                                        onChange={handleExaminerChange}
+                                        className={`border-2 rounded-xl px-4 py-2 font-black shadow-sm cursor-pointer outline-none focus:ring-4 ${
+                                            currentExaminer === 'Group Leader' 
+                                            ? 'border-amber-400 bg-amber-100 text-amber-900 focus:ring-amber-500/20' 
+                                            : 'border-purple-200 bg-purple-50 text-purple-900 focus:ring-purple-500/20'
+                                        }`}
+                                    >
+                                        <option value="">-- 选择 --</option>
+                                        {examinersList.map(t => (
+                                            <option key={t} value={t} className={t === 'Group Leader' ? 'font-black text-amber-800 bg-amber-50' : ''}>
+                                                {t === 'Group Leader' ? '⭐ Group Leader (组长标杆)' : t}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Real-time Scores */}
+                        <div className="flex items-center justify-end space-x-4 md:space-x-6 w-full xl:w-auto bg-slate-50 xl:bg-transparent p-3 xl:p-0 rounded-2xl">
+                            <div className="text-center">
+                                <div className="text-xs text-slate-500 font-bold mb-1">内容</div>
+                                <div className="font-black text-xl text-indigo-600">{contentTotal}<span className="text-sm text-slate-400 font-medium">/{maxContent}</span></div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-xs text-slate-500 font-bold mb-1">语文</div>
+                                <div className="font-black text-xl text-indigo-600">{languageTotal}<span className="text-sm text-slate-400 font-medium">/{maxLanguage}</span></div>
+                            </div>
+                            <div className="text-center px-6 py-2 rounded-2xl shadow-md bg-blue-600 text-white">
+                                <div className="text-xs font-bold opacity-90 mb-1">当前打分</div>
+                                <div className="font-black text-3xl leading-none">{grandTotal}<span className="text-sm font-medium opacity-80 ml-1">/{maxTotal}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Benchmark Comparison Card */}
+                    {currentExaminer && currentExaminer !== 'Group Leader' && selectedScript && (
+                        <div className="mb-8 no-print">
+                            <div className="p-6 rounded-3xl bg-white border-2 border-amber-200 shadow-sm">
+                                <h4 className="font-black text-amber-900 text-lg mb-3 flex items-center justify-between">
+                                    <span>🎯 组长标杆对比分析 ({selectedScript})</span>
+                                    {currentLeaderRecord ? (
+                                        <span className="text-xs px-3 py-1 bg-amber-100 text-amber-800 font-bold rounded-full">组长已设定标杆</span>
+                                    ) : (
+                                        <span className="text-xs px-3 py-1 bg-slate-100 text-slate-500 font-bold rounded-full">组长尚未提交该试卷</span>
+                                    )}
+                                </h4>
+                                
+                                {currentLeaderRecord ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                                        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200">
+                                            <span className="text-xs font-bold text-amber-700 block">内容标准对比</span>
+                                            <span className="text-lg font-black text-slate-800 block mt-1">
+                                                您的得分: {contentTotal}分 vs 组长: {currentLeaderRecord.content}分
+                                            </span>
+                                            <span className={`text-xs font-bold inline-block mt-2 px-3 py-1 rounded-full ${comparisonAnalysis.contentBandSame ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                                {comparisonAnalysis.contentBandSame ? '同等阶 ✓' : '跨等 ⚠️'} (差 {comparisonAnalysis.contentDiff > 0 ? '+' : ''}{comparisonAnalysis.contentDiff}分)
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200">
+                                            <span className="text-xs font-bold text-amber-700 block">语文标准对比</span>
+                                            <span className="text-lg font-black text-slate-800 block mt-1">
+                                                您的得分: {languageTotal}分 vs 组长: {currentLeaderRecord.language}分
+                                            </span>
+                                            <span className={`text-xs font-bold inline-block mt-2 px-3 py-1 rounded-full ${comparisonAnalysis.langBandSame ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                                {comparisonAnalysis.langBandSame ? '同等阶 ✓' : '跨等 ⚠️'} (差 {comparisonAnalysis.langDiff > 0 ? '+' : ''}{comparisonAnalysis.langDiff}分)
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-amber-100/60 p-4 rounded-2xl border border-amber-300 flex flex-col justify-center items-center">
+                                            <span className="text-xs font-bold text-amber-800 block">总分基准判定</span>
+                                            <span className="text-2xl font-black text-amber-900 mt-1">
+                                                {grandTotal}分 <span className="text-sm font-normal text-amber-700">/ 组长 {currentLeaderRecord.total}分</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-500 text-sm">选择组长（Group Leader）提交此试卷的分数后，系统将自动进行分差与等阶对比分析。</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Print Layout */}
+                    <div className="print-only print-container">
+                        <div className="text-center mb-6 border-b-2 border-slate-200 pb-6">
+                            <h1 className="text-3xl font-black text-slate-900 mb-2">雅德小学五年级写作 - 评分标准统一化</h1>
+                            <div className="flex justify-center flex-wrap gap-8 text-xl text-slate-800 font-bold mt-4">
+                                <span>试卷编号：<strong className="text-blue-700">{selectedScript || "未选择"}</strong></span>
+                                <span>评卷老师：<strong className="text-purple-700">{currentExaminer || "未选择"}</strong></span>
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-center items-center gap-6 mb-8">
+                            <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 w-40 text-center">
+                                <div className="text-slate-600 font-bold text-sm mb-1">内容 (Content)</div>
+                                <div className="text-3xl font-black text-slate-800">{contentTotal} <span className="text-base font-normal text-slate-400">/ {maxContent}</span></div>
+                            </div>
+                            <div className="text-3xl text-slate-300 font-light">+</div>
+                            <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 w-40 text-center">
+                                <div className="text-slate-600 font-bold text-sm mb-1">语文 (Language)</div>
+                                <div className="text-3xl font-black text-slate-800">{languageTotal} <span className="text-base font-normal text-slate-400">/ {maxLanguage}</span></div>
+                            </div>
+                            <div className="text-3xl text-slate-300 font-light">=</div>
+                            <div className="border-4 rounded-2xl p-5 w-48 text-center bg-blue-50 border-blue-200">
+                                <div className="font-bold text-sm mb-1 text-blue-700">评估总分 (Total)</div>
+                                <div className="text-4xl font-black text-blue-900">{grandTotal} <span className="text-lg text-blue-400">/ {maxTotal}</span></div>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <h2 className="text-xl font-black text-slate-900 mb-4">💡 AI 统一化评分对比与评语报告：</h2>
+                            <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-6 text-lg text-slate-800 leading-relaxed font-medium whitespace-pre-wrap min-h-[200px]">
+                                {feedbackText}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Interactive Rubrics Area */}
+                    <div className="no-print">
+                        <div className="mb-12">
+                            <h2 className="text-2xl font-black text-slate-800 mb-6 px-4 border-l-8 rounded-sm border-blue-600">
+                                第一部分：内容 ({maxContent}分)
+                            </h2>
+                            {renderRubricRow('content', writingRubrics.content)}
+                        </div>
+
+                        <div className="mb-12">
+                            <h2 className="text-2xl font-black text-slate-800 mb-6 px-4 border-l-8 rounded-sm border-indigo-600">
+                                第二部分：语文 ({maxLanguage}分)
+                            </h2>
+                            {renderRubricRow('language', writingRubrics.language)}
+                        </div>
+
+                        {/* AI Comparison & Feedback Editor */}
+                        <div className="mt-12 p-6 md:p-8 rounded-3xl border-2 shadow-sm bg-blue-50/50 border-blue-100">
+                            <h3 className="font-black text-xl md:text-2xl mb-4 flex items-center text-blue-900">
+                                📝 AI 评分统一化分析与评语生成
+                            </h3>
+                            <textarea 
+                                className="w-full h-48 md:h-56 p-6 rounded-2xl border-2 focus:ring-4 outline-none resize-none text-slate-800 text-lg leading-relaxed shadow-inner bg-white border-blue-200 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                                value={feedbackText}
+                                onChange={(e) => setFeedbackText(e.target.value)}
+                                placeholder="自动计算与组长标杆对比分析及评语..."
+                            ></textarea>
+                            
+                            <div className="flex flex-col md:flex-row justify-between items-center mt-8 gap-4 pt-6 border-t border-slate-200/60">
+                                <button 
+                                    onClick={resetForm} 
+                                    className="flex items-center text-slate-600 bg-white hover:bg-slate-100 border-2 border-slate-200 font-bold text-base px-6 py-3 rounded-xl transition-all order-2 md:order-1 shadow-sm"
+                                >
+                                    🔄 重置选择 
+                                </button>
+                                
+                                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto order-1 md:order-2">
+                                    <button 
+                                        onClick={handlePrint}
+                                        className="justify-center bg-white border-2 border-slate-300 hover:border-slate-400 text-slate-800 px-6 py-3 rounded-xl font-bold text-base shadow-sm flex items-center transition-all"
+                                    >
+                                        🖨️ 打印 / 保存 PDF
+                                    </button>
+                                    <button 
+                                        onClick={handleSubmitGAS}
+                                        disabled={submitStatus === 'loading'}
+                                        className={`justify-center text-white px-8 py-3 rounded-xl font-bold text-base shadow-md flex items-center transition-all transform hover:-translate-y-0.5 ${
+                                            submitStatus === 'loading' ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'
+                                        }`}
+                                    >
+                                        {submitStatus === 'loading' ? '☁️ 提交中...' : '☁️ 提交至云端表格'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
